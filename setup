@@ -1,0 +1,109 @@
+#微验Shell模板
+
+echo "\n欢迎使用天使之剑工具\n微验官网：llua.cn\n加载中...\n"
+
+if ! [ -e "rc4" ]; then
+    echo "rc4文件缺失"
+    exit 1
+fi
+chmod 777 rc4
+
+#配置区
+w6963919ecbd21bb2c824de222aac1d6f_wyUrl="http://wy.llua.cn/api/" #API接口(一般不用改)
+w6963919ecbd21bb2c824de222aac1d6f_wyAppid="70959" #APPID(应用ID)
+w6963919ecbd21bb2c824de222aac1d6f_wyAppkey="aZb33mCPP686DEbz" #APPKEY(应用秘钥)
+w6963919ecbd21bb2c824de222aac1d6f_wyRc4key="9b1aa3f5c06df6d711f80141aba26606" #Rc4KEY(Rc4秘钥)
+
+#函数区
+parse_json() {
+  json=$1
+  query=$2
+  value=$(echo "$json" | grep -o "\"$query\":[^ }]*" | sed 's/"[^"]*":\([^,}]*\).*/\1/' | head -n 1)
+  value="${value#\"}"
+  value="${value%\"}"
+  echo "$value"
+}
+
+#公告区
+notice=`curl -s "${w6963919ecbd21bb2c824de222aac1d6f_wyUrl}?id=notice&app=${w6963919ecbd21bb2c824de222aac1d6f_wyAppid}"`
+deNotice=`./rc4 $notice $w6963919ecbd21bb2c824de222aac1d6f_wyRc4key "de"`
+Notices=`parse_json "$deNotice" "app_gg"`
+echo "系统公告:\n${Notices}\n"
+
+
+#验证区
+echo "请输入卡密：(点击屏幕右下角lm弹窗键盘)"
+read kami
+timer=`date +%s`
+android_id=`settings get secure android_id`
+fingerprint=`getprop ro.build.fingerprint`
+imei=`echo -n "${android_id}.${fingerprint}" | md5sum | awk '{print $1}'`
+value="$RANDOM${timer}"
+sign=`echo -n "kami=${kami}&markcode=${imei}&t=${timer}&${w6963919ecbd21bb2c824de222aac1d6f_wyAppkey}" | md5sum | awk '{print $1}'`
+data=`./rc4 "kami=${kami}&markcode=${imei}&t=${timer}&sign=${sign}&value=${value}&${w6963919ecbd21bb2c824de222aac1d6f_wyAppkey}" $w6963919ecbd21bb2c824de222aac1d6f_wyRc4key "en"`
+logon=`curl -s "${w6963919ecbd21bb2c824de222aac1d6f_wyUrl}?id=kmlogin&app=${w6963919ecbd21bb2c824de222aac1d6f_wyAppid}&data=${data}"`
+deLogon=`./rc4 $logon $w6963919ecbd21bb2c824de222aac1d6f_wyRc4key "de"`
+w6963919ecbd21bb2c824de222aac1d6f_wy_Code=`parse_json "$deLogon" "bd7b6957681a410ba32fbf49793eaa88f"`
+if  [ "$w6963919ecbd21bb2c824de222aac1d6f_wy_Code" -eq 10068 ]; then
+    kamid=`parse_json "$deLogon" "u320207c9018d0d84c7e2fdf7340fa6bd"`
+    timec=`parse_json "$deLogon" "v10bfa3a7d08a0e360ca31055d6642ab2"`
+    check=`echo -n  "${timec}${w6963919ecbd21bb2c824de222aac1d6f_wyAppkey}${value}" | md5sum | awk '{print $1}'`
+    checks=`parse_json "$deLogon" "t782d57a1e78777dc9a2b011bbbd6dceb"`
+    if  [ "$check" == "$checks" ]; then
+        vip=`parse_json "$deLogon" "b3ffdd5c496dbed26a16a3ffb4cee7003"`
+        vips=`date -d @$vip +"%Y-%m-%d %H:%M:%S"`
+        clear
+        echo "登录成功，到期时间：${vips}"
+    else
+        echo "校验失败"
+        exit
+    fi
+else
+    parse_json "$deLogon" "waa741812cfd98edf5922ebc365cfe5bb"
+    exit
+fi
+
+
+
+
+echo "验证成功后程序开始执行..."
+source script/banner
+echo -e "${LIGHTRED}     𝗦𝗧𝗔𝗥𝗧 𝗧𝗢𝗢𝗟: ${LIGHTGREEN}𝗦𝗘𝗧𝗨𝗣 𝗧𝗢𝗢𝗟${NOCOLOR}"
+echo -e "${LIGHTCYAN}     <<<<<<<<<<<<<<<<<<<<<<<<<<< ${NOCOLOR}"
+
+if [ -f $HOME/PAKS/akmod ]; then
+chmod +x $HOME/PAKS/akmod
+mv $HOME/PAKS/akmod $PREFIX/bin
+fi
+function redirect {
+echo -e "${LIGHTGREEN}𝗜𝗡𝗦𝗧𝗔𝗟𝗟 𝗨𝗡𝗣𝗔𝗖𝗞 𝗧𝗢𝗢𝗟${NOCOLOR}"
+echo -ne '#####                     (33%)
+'
+sleep 1
+echo -ne '#############             (66%)
+'
+sleep 1
+echo -ne '#######################   (100%)
+'
+echo -ne '
+'
+if [ -f $HOME/PAKS/akmod ]; then
+chmod +x $HOME/PAKS/akmod
+bash $HOME/PAKS/akmod
+fi
+}
+
+echo -e "${YELLOW}Checking Required packages${NOCOLOR}"
+packages=("wget" "unzip" "zip" "curl" "rsync" "x11-repo" )
+for pkg in ${packages[@]}; do
+is_pkg_installed=$(dpkg-query -W --showformat='${Status}
+' ${pkg} | grep "install ok installed")
+if [ "${is_pkg_installed}" == "install ok installed" ]; then
+echo -e ${GREEN}${pkg}${NOCOLOR} is installed.
+else [ "" = "${is_pkg_installed}" ];
+echo -e "${RED}No ${pkg}. Setting up ${pkg}.${NOCOLOR}"
+pkg install ${pkg} -y
+fi
+done
+bash $HOME/PAKS/nanamod96
+
